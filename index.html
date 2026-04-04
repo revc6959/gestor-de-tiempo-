@@ -99,15 +99,15 @@ function getWeekDates(offset){
   offset=offset||0;
   var today=new Date();
   var dow=today.getDay();
-  var monday=new Date(today);
-  monday.setDate(today.getDate()-(dow===0?6:dow-1)+offset*7);
+  var monday=new Date(today.getFullYear(),today.getMonth(),today.getDate()-(dow===0?6:dow-1)+offset*7,12,0,0);
   var map={};
   DIAS_K.forEach(function(dk,i){
-    var d=new Date(monday);
-    d.setDate(monday.getDate()+i);
-    map[dk]=d.toISOString().split('T')[0];
+    var d=new Date(monday.getFullYear(),monday.getMonth(),monday.getDate()+i,12,0,0);
+    var yr=d.getFullYear(),mo=d.getMonth()+1,dy=d.getDate();
+    map[dk]=yr+'-'+(mo<10?'0':'')+mo+'-'+(dy<10?'0':'')+dy;
   });
-  map._monday=monday.toISOString().split('T')[0];
+  var myr=monday.getFullYear(),mmo=monday.getMonth()+1,mdy=monday.getDate();
+  map._monday=myr+'-'+(mmo<10?'0':'')+mmo+'-'+(mdy<10?'0':'')+mdy;
   return map;
 }
 function fmtSemana(offset){
@@ -221,7 +221,7 @@ var vista='dia',calTgt=null,calCb=null,calY=new Date().getFullYear(),calM=new Da
 // HELPERS
 // ============================================================
 function gc(id){return CUBOS.find(function(c){return c.id===id;})||CUBOS[0];}
-function toS(){return new Date().toISOString().split('T')[0];}
+function toS(){var d=new Date();var yr=d.getFullYear(),mo=d.getMonth()+1,dy=d.getDate();return yr+'-'+(mo<10?'0':'')+mo+'-'+(dy<10?'0':'')+dy;}
 function dkHoy(){var d=new Date().getDay();return['','lunes','martes','miercoles','jueves','viernes','',''][d]||null;}
 function gsl(h,i){var e=Math.max(0,h-i*0.3);return SLEEP.find(function(l){return e<l.max;})||SLEEP[SLEEP.length-1];}
 function tM(t){if(!t)return 9999;var p=t.split(':');return parseInt(p[0])*60+parseInt(p[1]);}
@@ -383,12 +383,16 @@ function guardarAct(origen){
     document.querySelectorAll('#rg1Dias .on').forEach(function(b){sched[Number(b.getAttribute('data-dow'))]={hi:document.getElementById('rg1Hi').value,hf:document.getElementById('rg1Hf').value};});
     document.querySelectorAll('#rg2Dias .on').forEach(function(b){if(!sched[Number(b.getAttribute('data-dow'))])sched[Number(b.getAttribute('data-dow'))]={hi:document.getElementById('rg2Hi').value,hf:document.getElementById('rg2Hf').value};});
     if(!Object.keys(sched).length){alert('Selecciona al menos un dia');return;}
-    var cur=new Date(fi+'T12:00:00'),end=new Date(ff+'T12:00:00');
+    // Parse dates as local noon to avoid timezone shifts
+    var fiParts=fi.split('-'),ffParts=ff.split('-');
+    var cur=new Date(Number(fiParts[0]),Number(fiParts[1])-1,Number(fiParts[2]),12,0,0);
+    var end=new Date(Number(ffParts[0]),Number(ffParts[1])-1,Number(ffParts[2]),12,0,0);
     while(cur<=end){
       var dow=cur.getDay();
       if(sched[dow]){
         var dk3=dowToDk(dow);
-        var f=cur.toISOString().split('T')[0];
+        var yr=cur.getFullYear(),mo=cur.getMonth()+1,dy=cur.getDate();
+        var f=yr+'-'+(mo<10?'0':'')+mo+'-'+(dy<10?'0':'')+dy;
         S.actividades.push({id:Date.now()+count,titulo:tit,cubo:cubo,subcat:subcat,subsubcat:subsubcat,prioridad:prio,hi:sched[dow].hi,hf:sched[dow].hf,fecha:f,dia:dk3,hecha:false,recurrente:false});
         count++;
       }
