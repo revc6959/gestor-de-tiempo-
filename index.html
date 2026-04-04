@@ -144,6 +144,11 @@ function updSubsubcat(subcatSelId,subsubcatContId){
   if(opts){cont.innerHTML='<select class="sel" id="'+subsubcatContId+'_sel">'+opts+'</select>';cont.style.display='block';}
   else{cont.innerHTML='';cont.style.display='none';}
 }
+function dowToDk(dow){
+  // dow: 1=lunes,2=martes,3=mie,4=jue,5=vie. Returns DIAS_K string.
+  if(dow>=1&&dow<=5)return DIAS_K[dow-1];
+  return '';
+}
 function subcatOpts(cuboId,sel){
   var subs=SUBCATS[cuboId]||[];
   var o='<option value="">-- Subcategoria (opcional) --</option>';
@@ -368,7 +373,7 @@ function guardarAct(origen){
     var hi=document.getElementById('maHi').value;
     var hf=document.getElementById('maHf').value;
     var dn=fecha?new Date(fecha+'T12:00:00').getDay():new Date().getDay();
-    var dk2=DIAS_K[DIAS_DOW.indexOf(dn)]||DIAS_K[new Date().getDay()-1]||'lunes';
+    var dk2=dowToDk(dn);
     S.actividades.push({id:Date.now(),titulo:tit,cubo:cubo,subcat:subcat,subsubcat:subsubcat,prioridad:prio,hi:hi,hf:hf,fecha:fecha,dia:dk2,hecha:false,recurrente:false});
     count=1;
   } else if(tipR){
@@ -382,7 +387,7 @@ function guardarAct(origen){
     while(cur<=end){
       var dow=cur.getDay();
       if(sched[dow]){
-        var dk3=DIAS_K[DIAS_DOW.indexOf(dow)]||'';
+        var dk3=dowToDk(dow);
         var f=cur.toISOString().split('T')[0];
         S.actividades.push({id:Date.now()+count,titulo:tit,cubo:cubo,subcat:subcat,subsubcat:subsubcat,prioridad:prio,hi:sched[dow].hi,hf:sched[dow].hf,fecha:f,dia:dk3,hecha:false,recurrente:false});
         count++;
@@ -403,7 +408,7 @@ function guardarAct(origen){
         var diff=(dow-today.getDay()+7)%7+w*7;
         d2.setDate(today.getDate()+diff);
         var fRec=d2.toISOString().split('T')[0];
-        var dk4=DIAS_K[DIAS_DOW.indexOf(dow)]||'';
+        var dk4=dowToDk(dow);
         S.actividades.push({id:Date.now()+count,titulo:tit,cubo:cubo,subcat:subcat,subsubcat:subsubcat,prioridad:prio,hi:hi2,hf:hf2,fecha:fRec,dia:dk4,hecha:false,recurrente:true});
         count++;
       });
@@ -629,7 +634,7 @@ function confPendRango(id){
     var dow=cur.getDay();
     if(dias.indexOf(dow)>=0){
       var f=cur.toISOString().split('T')[0];
-      var dk2=DIAS_K[DIAS_DOW.indexOf(dow)]||'';
+      var dk2=dowToDk(dow);
       S.actividades.push({id:Date.now()+count,titulo:p.titulo,cubo:p.cubo,subcat:p.subcat||'',prioridad:'media',hi:hi,hf:hf,fecha:f,dia:dk2,hecha:false,recurrente:false});
       count++;
     }
@@ -702,7 +707,7 @@ function confPend(id){
   var fecha=document.getElementById('ppF_'+id).value;
   if(!fecha){alert('Selecciona una fecha');return;}
   var hi=document.getElementById('ppHi_'+id).value,hf=document.getElementById('ppHf_'+id).value;
-  var dn=new Date(fecha+'T12:00:00').getDay(),dk2=DIAS_K[DIAS_DOW.indexOf(dn)]||'';
+  var dn=new Date(fecha+'T12:00:00').getDay(),dk2=dowToDk(dn);
   S.actividades.push({id:Date.now(),titulo:p.titulo,cubo:p.cubo,subcat:p.subcat||'',prioridad:'media',hi:hi,hf:hf,fecha:fecha,dia:dk2,hecha:false,recurrente:false});
   S.pendientes=S.pendientes.filter(function(x){return x.id!==id;});
   save();rPend();rDia();rSem();
@@ -882,7 +887,7 @@ function confProgPaso(mid,pid){
   var m=S.metas.find(function(x){return x.id===mid;});
   var p=m?m.pasos.find(function(x){return x.id===pid;}):null;
   if(m&&p){
-    var dn=new Date(fecha+'T12:00:00').getDay(),dk2=DIAS_K[DIAS_DOW.indexOf(dn)]||'';
+    var dn=new Date(fecha+'T12:00:00').getDay(),dk2=dowToDk(dn);
     // Remove existing if any
     S.actividades=S.actividades.filter(function(a){return a.metaPasoId!==pid;});
     S.actividades.push({id:Date.now(),titulo:p.txt+' ['+m.titulo+']',cubo:m.cubo,subcat:m.subcat||'',prioridad:'media',hi:hi,hf:hf,fecha:fecha,dia:dk2,hecha:false,recurrente:false,metaPasoId:pid});
@@ -994,7 +999,7 @@ function confProgInv(iid){
     if(dias.indexOf(dow)>=0){
       var dur=Math.min(durSes,minRest);
       var fSes=cur.toISOString().split('T')[0];
-      var dk2=DIAS_K[DIAS_DOW.indexOf(dow)]||'';
+      var dk2=dowToDk(dow);
       S.actividades.push({id:Date.now()+count,titulo:item.nombre+' — Sesion '+(Math.floor((totMin-minRest)/durSes)+1),cubo:'academico',prioridad:'media',hi:hi,hf:hf,fecha:fSes,dia:dk2,hecha:false,recurrente:false,invId:iid});
       minRest-=dur;
     }
