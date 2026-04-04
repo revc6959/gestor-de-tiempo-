@@ -290,8 +290,9 @@ function save(){
 }
 
 function syncFromFirebase(cb){
+  if(!currentUser){if(cb)cb();return;}
   db.collection('usuarios').doc(USER_DOC).get().then(function(doc){
-    if(doc.exists){
+    if(doc.exists&&doc.data()&&doc.data().actividades){
       var d=doc.data();
       var def=defState();
       S={
@@ -305,7 +306,13 @@ function syncFromFirebase(cb){
         tempCarga:d.tempCarga||0
       };
       try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e){}
-      console.log('Sincronizado desde Firebase');
+      console.log('Sincronizado desde Firebase: '+S.actividades.length+' actividades');
+    } else {
+      console.log('Firebase vacio - subiendo datos locales');
+      // If Firebase is empty but we have local data, upload it
+      if(S.actividades&&S.actividades.length>0){
+        db.collection('usuarios').doc(USER_DOC).set(S).catch(function(e){console.log('Upload error:',e);});
+      }
     }
     if(cb)cb();
   }).catch(function(e){
@@ -1227,6 +1234,15 @@ function sincronizar(){
     if(btn2)btn2.textContent='↻ Sync';
   });
 }
+function subirAFirebase(){
+  if(!currentUser){alert('Debes iniciar sesion primero');return;}
+  db.collection('usuarios').doc(USER_DOC).set(S).then(function(){
+    alert('Datos subidos a Firebase correctamente. Ahora puedes sincronizar desde otros dispositivos.');
+    document.getElementById('modalRen').style.display='none';
+  }).catch(function(e){
+    alert('Error: '+e.message);
+  });
+}
 function showRespaldo(){
   var h='<div class="modal-box"><div class="sec" style="margin-bottom:11px">Respaldo de datos</div>'
     +'<p style="font-size:12px;color:#666;line-height:1.6;margin-bottom:12px">Tus datos se guardan en este dispositivo. Exporta semanalmente.</p>'
@@ -1238,7 +1254,38 @@ function showRespaldo(){
   modal.style.display='flex';
 }
 function exportar(){var b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download='cubos-'+toS()+'.json';a.click();URL.revokeObjectURL(u);}
-function importar(){var i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{var d=JSON.parse(ev.target.result);if(!d.actividades)throw new Error('Invalido');S=d;save();location.reload();}catch(err){alert('Archivo invalido.');}};r.readAsText(f);};i.click();}
+function importar(){
+  var i=document.createElement('input');
+  i.type='file';i.accept='.json';
+  i.onchange=function(e){
+    var f=e.target.files[0];if(!f)return;
+    var r=new FileReader();
+    r.onload=function(ev){
+      try{
+        var d=JSON.parse(ev.target.result);
+        if(!d.actividades)throw new Error('Invalido');
+        S=d;
+        // Save to localStorage first
+        try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e2){}
+        // Save to Firebase and wait
+        if(currentUser){
+          db.collection('usuarios').doc(USER_DOC).set(S).then(function(){
+            alert('Datos importados y sincronizados con Firebase.');
+            location.reload();
+          }).catch(function(e3){
+            alert('Importado localmente. Error Firebase: '+e3.message);
+            location.reload();
+          });
+        } else {
+          alert('Datos importados localmente.');
+          location.reload();
+        }
+      }catch(err){alert('Archivo invalido.');}
+    };
+    r.readAsText(f);
+  };
+  i.click();
+}
 
 // ============================================================
 // HISTORIAL
