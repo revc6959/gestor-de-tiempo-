@@ -56,9 +56,33 @@ input,select,button,textarea{font-family:inherit;}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
 .modal-box{background:white;border-radius:18px 18px 0 0;padding:20px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;}
 input[type=range]{width:100%;accent-color:#9B4468;}
+
+.login-screen{position:fixed;inset:0;background:linear-gradient(160deg,#1A1015 0%,#3D1A2E 60%,#5C1F45 100%);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.login-box{background:white;border-radius:20px;padding:32px 24px;width:90%;max-width:360px;text-align:center;}
+.login-title{font-size:22px;font-weight:900;font-style:italic;color:#1A1015;margin-bottom:4px;}
+.login-sub{font-size:11px;color:#888;margin-bottom:24px;line-height:1.5;}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;background:white;border:2px solid #E8D5DF;border-radius:11px;font-size:13px;font-weight:700;color:#1A1015;cursor:pointer;font-family:inherit;transition:all 0.2s;}
+.google-btn:hover{background:#FDF2F8;border-color:#9B4468;}
+.google-btn img{width:20px;height:20px;}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body>
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <div style="font-size:36px;margin-bottom:12px">⏱</div>
+    <div class="login-title">Mi Gestor de Tiempo</div>
+    <div class="login-sub">Sistema de Cubos v3<br>Mama · Estudiante · Emprendedora</div>
+    <button class="google-btn" onclick="loginGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"/>
+      Entrar con Google
+    </button>
+    <div id="loginError" style="color:#EF4444;font-size:11px;margin-top:10px;display:none">Error al iniciar sesión. Intenta de nuevo.</div>
+  </div>
+</div>
+<div id="appContent" style="display:none">
 <div class="hdr">
   <div class="hdr-sub">Sistema de Cubos v3 &middot; Mama &middot; Estudiante &middot; Emprendedora</div>
   <h1>Mi Gestor de Tiempo</h1>
@@ -193,13 +217,58 @@ function defState(){
     mensajes:[{rol:'asistente',texto:'Hola, soy Valeria — tu COO de productividad. Walker, Newport, Vanderkam, Allen, Pink, Buffett. Sin rodeos. Que necesitas?'}]
   };
 }
+// Firebase config
+var firebaseConfig={
+  apiKey:"AIzaSyAHjJkeXOv6gP1-Tsd0hXUzm6cb8LWCY_s",
+  authDomain:"gestor-de-tiempo-79c0f.firebaseapp.com",
+  projectId:"gestor-de-tiempo-79c0f",
+  storageBucket:"gestor-de-tiempo-79c0f.firebasestorage.app",
+  messagingSenderId:"840042801542",
+  appId:"1:840042801542:web:1fb93016227cf02b5b6407"
+};
+firebase.initializeApp(firebaseConfig);
+var db=firebase.firestore();
+var USER_DOC='elena'; // se actualiza con el uid del usuario
+var currentUser=null;
+
+function loginGoogle(){
+  var provider=new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(function(e){
+    var err=document.getElementById('loginError');
+    if(err)err.style.display='block';
+    console.log('Login error:',e);
+  });
+}
+
+function logout(){
+  firebase.auth().signOut();
+}
+
+firebase.auth().onAuthStateChanged(function(user){
+  if(user){
+    currentUser=user;
+    USER_DOC=user.uid;
+    // Show app, hide login
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appContent').style.display='block';
+    // Load data
+    syncFromFirebase(function(){
+      initHdr();initNav();rDia();
+    });
+  } else {
+    currentUser=null;
+    // Show login, hide app
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('appContent').style.display='none';
+  }
+});
+
 function loadS(){
   try{
     var raw=localStorage.getItem('cubos_v7');
     if(raw){
       var d=JSON.parse(raw);
       var def=defState();
-      // Merge preserving all fields
       return {
         actividades:d.actividades||[],
         pendientes:d.pendientes||[],
@@ -207,13 +276,45 @@ function loadS(){
         inventario:d.inventario||[],
         checkin:Object.assign(def.checkin,d.checkin||{}),
         cumplimiento:d.cumplimiento||{},
-        mensajes:d.mensajes||def.mensajes
+        mensajes:d.mensajes||def.mensajes,
+        tempCarga:d.tempCarga||0
       };
     }
   }catch(e){}
   return defState();
 }
-function save(){try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e){}}
+
+function save(){
+  try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e){}
+  // Sync to Firebase
+  db.collection('usuarios').doc(USER_DOC).set(S).catch(function(e){console.log('Firebase save error:',e);});
+}
+
+function syncFromFirebase(cb){
+  db.collection('usuarios').doc(USER_DOC).get().then(function(doc){
+    if(doc.exists){
+      var d=doc.data();
+      var def=defState();
+      S={
+        actividades:d.actividades||[],
+        pendientes:d.pendientes||[],
+        metas:d.metas||[],
+        inventario:d.inventario||[],
+        checkin:Object.assign(def.checkin,d.checkin||{}),
+        cumplimiento:d.cumplimiento||{},
+        mensajes:d.mensajes||def.mensajes,
+        tempCarga:d.tempCarga||0
+      };
+      try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e){}
+      console.log('Sincronizado desde Firebase');
+    }
+    if(cb)cb();
+  }).catch(function(e){
+    console.log('Firebase sync error:',e);
+    if(cb)cb();
+  });
+}
+
 var S=loadS();
 var vista='dia',calTgt=null,calCb=null,calY=new Date().getFullYear(),calM=new Date().getMonth(),semOffset=0;
 
@@ -1111,6 +1212,22 @@ function sendV(preMsg){
 // ============================================================
 // RESPALDO
 // ============================================================
+function sincronizar(){
+  var btn=document.getElementById('btnSync');
+  if(btn)btn.textContent='Sincronizando...';
+  syncFromFirebase(function(){
+    initHdr();
+    if(vista==='dia')rDia();
+    else if(vista==='semana')rSem();
+    else if(vista==='pendientes')rPend();
+    else if(vista==='auditoria')rAud();
+    else if(vista==='metas')rMetas();
+    else if(vista==='inventario')rInv();
+    else if(vista==='historial')rHistorial();
+    var btn2=document.getElementById('btnSync');
+    if(btn2)btn2.textContent='↻ Sync';
+  });
+}
 function showRespaldo(){
   var h='<div class="modal-box"><div class="sec" style="margin-bottom:11px">Respaldo de datos</div>'
     +'<p style="font-size:12px;color:#666;line-height:1.6;margin-bottom:12px">Tus datos se guardan en este dispositivo. Exporta semanalmente.</p>'
@@ -1237,7 +1354,7 @@ function rNota(){
 // ============================================================
 // INIT
 // ============================================================
-window.onload=function(){initHdr();initNav();rDia();};
+window.onload=function(){/* Auth handles init */};
 </script>
-</body>
+</div></body>
 </html>
