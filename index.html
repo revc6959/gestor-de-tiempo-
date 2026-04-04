@@ -74,6 +74,7 @@ input[type=range]{width:100%;accent-color:#9B4468;}
   <div class="vst" id="v-metas"></div>
   <div class="vst" id="v-inventario"></div>
   <div class="vst" id="v-valeria"></div>
+  <div class="vst" id="v-historial"></div>
   <div class="vst" id="v-nota"></div>
 </div>
 <div id="modalCal" style="display:none" class="modal-bg"></div>
@@ -94,10 +95,30 @@ var CUBOS=[
 var DIAS_L=['Lunes','Martes','Miercoles','Jueves','Viernes'];
 var DIAS_K=['lunes','martes','miercoles','jueves','viernes'];
 var DIAS_DOW=[1,2,3,4,5];
+function getWeekDates(offset){
+  offset=offset||0;
+  var today=new Date();
+  var dow=today.getDay();
+  var monday=new Date(today);
+  monday.setDate(today.getDate()-(dow===0?6:dow-1)+offset*7);
+  var map={};
+  DIAS_K.forEach(function(dk,i){
+    var d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    map[dk]=d.toISOString().split('T')[0];
+  });
+  map._monday=monday.toISOString().split('T')[0];
+  return map;
+}
+function fmtSemana(offset){
+  var wd=getWeekDates(offset);
+  var ini=fds(wd['lunes']),fin=fds(wd['viernes']);
+  return ini+' — '+fin;
+}
 var SUBCATS={
   bebe:['Cuidado Directo','Alimentacion','Educ. Extracurricular','Salud','Logistica','Estimulacion y Desarrollo'],
   personal:['Ejercicio Fisico','Arreglo Personal','Salud','Meditacion','Autoconocimiento','Recreacion / Ocio','Planificacion Personal'],
-  academico:['Formacion Profesional','Metafisica China','Desarrollo Personal'],
+  academico:['Formacion Profesional','Metafisica China','Desarrollo Personal','Formacion Parental'],
   emprendimiento:['Conformacion y Gestion','Postulacion a Contratos','Ejecucion de Contratos','Produccion de Contenidos'],
   hogar:['Alimentacion','Organizacion y Limpieza','Proyecto Renovacion','Compras'],
   recuperacion:['Sueno','Descanso Activo']
@@ -105,7 +126,8 @@ var SUBCATS={
 var SUBSUBCATS={
   'Formacion Profesional':['Clases / Sesiones Sincronas','Estudio e Investigacion','Trabajos y Entregas','Admin Universitaria'],
   'Metafisica China':['Clases / Sesiones Sincronas','Estudio e Investigacion','Aplicacion y Practica','Entregas'],
-  'Desarrollo Personal':['Clases / Sesiones Sincronas','Estudio e Investigacion','Practica Activa','Entregas']
+  'Desarrollo Personal':['Clases / Sesiones Sincronas','Estudio e Investigacion','Practica Activa','Entregas'],
+  'Formacion Parental':['Talleres','Lectura e Investigacion']
 };
 function subsubcatOpts(subcatVal,sel){
   var subs=SUBSUBCATS[subcatVal]||[];
@@ -188,7 +210,7 @@ function loadS(){
 }
 function save(){try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e){}}
 var S=loadS();
-var vista='dia',calTgt=null,calCb=null,calY=new Date().getFullYear(),calM=new Date().getMonth();
+var vista='dia',calTgt=null,calCb=null,calY=new Date().getFullYear(),calM=new Date().getMonth(),semOffset=0;
 
 // ============================================================
 // HELPERS
@@ -346,7 +368,7 @@ function guardarAct(origen){
     var hi=document.getElementById('maHi').value;
     var hf=document.getElementById('maHf').value;
     var dn=fecha?new Date(fecha+'T12:00:00').getDay():new Date().getDay();
-    var dk2=DIAS_K[DIAS_DOW.indexOf(dn)]||'';
+    var dk2=DIAS_K[DIAS_DOW.indexOf(dn)]||DIAS_K[new Date().getDay()-1]||'lunes';
     S.actividades.push({id:Date.now(),titulo:tit,cubo:cubo,subcat:subcat,subsubcat:subsubcat,prioridad:prio,hi:hi,hf:hf,fecha:fecha,dia:dk2,hecha:false,recurrente:false});
     count=1;
   } else if(tipR){
@@ -393,7 +415,7 @@ function guardarAct(origen){
 // ============================================================
 // NAV
 // ============================================================
-var VISTAS=[{id:'dia',l:'Dia'},{id:'semana',l:'Semana'},{id:'pendientes',l:'Pendientes'},{id:'auditoria',l:'Auditoria'},{id:'metas',l:'Metas'},{id:'inventario',l:'Inventario'},{id:'valeria',l:'Valeria'},{id:'nota',l:'Nota'}];
+var VISTAS=[{id:'dia',l:'Dia'},{id:'semana',l:'Semana'},{id:'pendientes',l:'Pendientes'},{id:'auditoria',l:'Auditoria'},{id:'metas',l:'Metas'},{id:'inventario',l:'Inventario'},{id:'historial',l:'Historial'},{id:'valeria',l:'Valeria'},{id:'nota',l:'Nota'}];
 function initNav(){
   document.getElementById('nav').innerHTML=VISTAS.map(function(v){
     return'<button class="nb'+(v.id===vista?' on':'')+'" onclick="go(\''+v.id+'\')">'+v.l+'</button>';
@@ -403,7 +425,7 @@ function go(id){
   document.querySelectorAll('.vst').forEach(function(v){v.classList.remove('on');});
   document.getElementById('v-'+id).classList.add('on');
   vista=id;initNav();
-  if(id==='dia')rDia();else if(id==='semana')rSem();else if(id==='pendientes')rPend();else if(id==='auditoria')rAud();else if(id==='metas')rMetas();else if(id==='inventario')rInv();else if(id==='valeria')rVal();else if(id==='nota')rNota();
+  if(id==='dia')rDia();else if(id==='semana')rSem();else if(id==='pendientes')rPend();else if(id==='auditoria')rAud();else if(id==='metas')rMetas();else if(id==='inventario')rInv();else if(id==='valeria')rVal();else if(id==='historial')rHistorial();else if(id==='nota')rNota();
 }
 function initHdr(){
   var d=dkHoy();
@@ -445,7 +467,13 @@ function rDia(){
   }
   // Actividades de hoy
   var hoy=toS();
-  var actsHoy=S.actividades.filter(function(a){return !a.hecha&&(a.fecha===hoy||(a.recurrente&&a.dia===d));});
+  var actsHoy=S.actividades.filter(function(a){
+    if(a.hecha)return false;
+    if(a.fecha===hoy)return true;
+    if(!a.fecha&&a.dia===d)return true;
+    if(a.recurrente&&a.dia===d)return true;
+    return false;
+  });
   actsHoy.sort(function(a,b){return tM(a.hi)-tM(b.hi);});
   // Metas que vencen hoy o pronto
   var metasProximas=S.metas.filter(function(m){return m.vencimiento&&m.vencimiento<=hoy;});
@@ -517,11 +545,31 @@ function dA(id){
 // ============================================================
 function rSem(){
   var hoy=toS(),d=dkHoy();
-  var h='<button class="btn" onclick="showModalAct(\'semana\')" style="margin-bottom:10px">+ Agregar actividad</button>';
+  var esHoy=semOffset===0;
+  var h='<div style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:12px;padding:10px 14px;margin-bottom:10px;box-shadow:0 1px 6px rgba(26,16,21,0.07)">';
+  h+='<button onclick="semOffset--;rSem()" style="background:#FDF2F8;border:1.5px solid #D4869E;border-radius:8px;font-size:18px;cursor:pointer;color:#9B4468;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-family:inherit">&lsaquo;</button>';
+  h+='<div style="text-align:center"><div style="font-size:10px;font-weight:800;color:#9B4468;letter-spacing:1px">'+(esHoy?'SEMANA ACTUAL':semOffset>0?'+'+semOffset+' SEMANA':''+semOffset+' SEMANA')+'</div><div style="font-size:11px;color:#888">'+fmtSemana(semOffset)+'</div></div>';
+  h+='<button onclick="semOffset++;rSem()" style="background:#FDF2F8;border:1.5px solid #D4869E;border-radius:8px;font-size:18px;cursor:pointer;color:#9B4468;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-family:inherit">&rsaquo;</button>';
+  h+='</div>';
+  if(!esHoy)h+='<button onclick="semOffset=0;rSem()" style="width:100%;padding:7px;background:#FDF2F8;border:1.5px solid #D4869E;border-radius:9px;font-size:11px;color:#9B4468;font-weight:700;cursor:pointer;margin-bottom:8px;font-family:inherit">Volver a semana actual</button>';
+  h+='<button class="btn" onclick="showModalAct(\'semana\')" style="margin-bottom:10px">+ Agregar actividad</button>';
   DIAS_K.forEach(function(dk2,di){
     var disp=HCOG[dk2]||0;
-    var actsD=S.actividades.filter(function(a){return !a.hecha&&a.dia===dk2;});
-    var actsDone=S.actividades.filter(function(a){return a.hecha&&a.dia===dk2;});
+    var weekDates=getWeekDates(semOffset);
+    var dk2Date=weekDates[dk2]||'';
+    var actsD=S.actividades.filter(function(a){
+      if(a.hecha)return false;
+      if(a.fecha&&a.fecha===dk2Date)return true;
+      if(!a.fecha&&semOffset===0&&a.dia===dk2)return true;
+      if(a.recurrente&&a.dia===dk2)return true;
+      return false;
+    });
+    var actsDone=S.actividades.filter(function(a){
+      if(!a.hecha)return false;
+      if(a.fecha&&a.fecha===dk2Date)return true;
+      if(!a.fecha&&semOffset===0&&a.dia===dk2)return true;
+      return false;
+    });
     var hUsadas=actsD.reduce(function(s,a){return s+Math.max(0,tM(a.hf)-tM(a.hi))/60;},0);
     var libre=Math.max(0,disp-hUsadas);
     var sobre=hUsadas>disp;
@@ -1068,6 +1116,67 @@ function exportar(){var b=new Blob([JSON.stringify(S,null,2)],{type:'application
 function importar(){var i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{var d=JSON.parse(ev.target.result);if(!d.actividades)throw new Error('Invalido');S=d;save();location.reload();}catch(err){alert('Archivo invalido.');}};r.readAsText(f);};i.click();}
 
 // ============================================================
+// HISTORIAL
+// ============================================================
+function rHistorial(){
+  var cumplidas=S.actividades.filter(function(a){return a.hecha;});
+  cumplidas.sort(function(a,b){
+    var fa=a.fechaHecha||a.fecha||'';
+    var fb=b.fechaHecha||b.fecha||'';
+    return fb.localeCompare(fa);
+  });
+  var h='<div class="hint">Todas las actividades completadas, ordenadas de mas reciente a mas antigua.</div>';
+  // Stats
+  h+='<div class="g3" style="margin-bottom:10px">';
+  h+='<div class="card" style="text-align:center;border-top:3px solid #22C55E;padding:11px"><div style="font-size:22px;font-weight:900;color:#22C55E">'+cumplidas.length+'</div><div style="font-size:9px;color:#999">Completadas</div></div>';
+  var hrsTotal=cumplidas.reduce(function(s,a){return s+Math.max(0,tM(a.hf)-tM(a.hi))/60;},0);
+  h+='<div class="card" style="text-align:center;border-top:3px solid #9B4468;padding:11px"><div style="font-size:22px;font-weight:900;color:#9B4468">'+hrsTotal.toFixed(0)+'h</div><div style="font-size:9px;color:#999">Ejecutadas</div></div>';
+  var pct=S.actividades.length?Math.round(cumplidas.length/S.actividades.length*100):0;
+  h+='<div class="card" style="text-align:center;border-top:3px solid #60A5FA;padding:11px"><div style="font-size:22px;font-weight:900;color:#60A5FA">'+pct+'%</div><div style="font-size:9px;color:#999">Del total</div></div>';
+  h+='</div>';
+  if(!cumplidas.length){
+    h+='<div class="card"><div class="empty">Aun no hay actividades completadas.</div></div>';
+    document.getElementById('v-historial').innerHTML=h;
+    return;
+  }
+  // Group by date
+  var byDate={};
+  cumplidas.forEach(function(a){
+    var f=a.fechaHecha||a.fecha||'Sin fecha';
+    if(!byDate[f])byDate[f]=[];
+    byDate[f].push(a);
+  });
+  Object.keys(byDate).sort(function(a,b){return b.localeCompare(a);}).forEach(function(fecha){
+    h+='<div style="font-size:10px;font-weight:800;color:#9B4468;letter-spacing:1.5px;margin:12px 0 6px">'+( fecha==='Sin fecha'?'SIN FECHA':fds(fecha).toUpperCase())+'</div>';
+    byDate[fecha].forEach(function(a){
+      var cub=gc(a.cubo);
+      h+='<div class="act" style="background:'+cub.bg+';border-left-color:'+cub.c+';opacity:0.85">';
+      h+='<div style="display:flex;align-items:flex-start;gap:8px">';
+      h+='<div style="width:20px;height:20px;border-radius:6px;background:#22C55E;display:flex;align-items:center;justify-content:center;font-size:11px;color:white;flex-shrink:0;margin-top:1px">✓</div>';
+      h+='<div style="flex:1">';
+      h+='<div style="font-size:12px;font-weight:700;color:'+cub.dk+';text-decoration:line-through">'+a.titulo+'</div>';
+      if(a.hi)h+='<div style="font-size:10px;color:#888">'+a.hi+(a.hf?'–'+a.hf:'')+'</div>';
+      h+=bdg(cub.bg,cub.dk,cub.l);
+      if(a.subcat)h+=' '+bdg(cub.bg,cub.c,a.subcat);
+      if(a.subsubcat)h+=' '+bdg(cub.bg,cub.c,a.subsubcat);
+      h+='</div>';
+      h+='<button onclick="dsmHist('+a.id+')" style="background:none;border:none;font-size:10px;color:#CCC;cursor:pointer;font-family:inherit;white-space:nowrap">Deshacer</button>';
+      h+='</div></div>';
+    });
+  });
+  h+='<div style="text-align:center;margin-top:14px"><button onclick="limpiarHistorial()" style="background:none;border:1.5px solid #EF4444;color:#EF4444;border-radius:8px;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Limpiar historial completadas</button></div>';
+  document.getElementById('v-historial').innerHTML=h;
+}
+function dsmHist(id){
+  S.actividades=S.actividades.map(function(a){return a.id===id?Object.assign({},a,{hecha:false,fechaHecha:null}):a;});
+  save();rHistorial();rDia();rSem();
+}
+function limpiarHistorial(){
+  S.actividades=S.actividades.filter(function(a){return !a.hecha;});
+  save();rHistorial();
+}
+
+// ============================================================
 // NOTA METODOLOGICA
 // ============================================================
 function rNota(){
@@ -1080,7 +1189,7 @@ function rNota(){
   var SUBCATS_LABEL={
     bebe:{emoji:'🍼',subs:['Cuidado Directo','Alimentacion','Educ. Extracurricular','Salud','Logistica','Estimulacion y Desarrollo']},
     personal:{emoji:'🙋',subs:['Ejercicio Fisico','Arreglo Personal','Salud','Meditacion','Autoconocimiento','Recreacion / Ocio','Planificacion Personal']},
-    academico:{emoji:'🎓',subs:['3A: Clases Universitarias','3A: Estudio e Investigacion','3A: Trabajos y Entregas','3A: Admin Universitaria','3B: Clases Metafisica','3B: Estudio Metafisica','3B: Aplicacion y Practica','3C: Crecimiento Personal']},
+    academico:{emoji:'🎓',subs:['Formacion Profesional > Clases/Estudio/Trabajos','Metafisica China > Clases/Estudio/Practica','Desarrollo Personal > Clases/Estudio/Practica','Formacion Parental > Talleres/Lectura']},
     emprendimiento:{emoji:'🚀',subs:['Conformacion y Gestion','Postulacion a Contratos','Ejecucion de Contratos','Produccion de Contenidos']},
     hogar:{emoji:'🏠',subs:['Alimentacion','Organizacion y Limpieza','Proyecto Renovacion','Compras']},
     recuperacion:{emoji:'🔋',subs:['Sueno','Descanso Activo']}
