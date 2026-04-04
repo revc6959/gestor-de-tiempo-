@@ -70,7 +70,7 @@ input[type=range]{width:100%;accent-color:#9B4468;}
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body>
-<div id="loginScreen" class="login-screen">
+<div id="loginScreen" class="login-screen" style="display:flex!important">
   <div class="login-box">
     <div style="font-size:36px;margin-bottom:12px">⏱</div>
     <div class="login-title">Mi Gestor de Tiempo</div>
@@ -245,21 +245,20 @@ function logout(){
 }
 
 firebase.auth().onAuthStateChanged(function(user){
+  var loginEl=document.getElementById('loginScreen');
+  var appEl=document.getElementById('appContent');
   if(user){
     currentUser=user;
     USER_DOC=user.uid;
-    // Show app, hide login
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('appContent').style.display='block';
-    // Load data
+    if(loginEl){loginEl.style.cssText='display:none!important';}
+    if(appEl){appEl.style.cssText='display:block!important';}
     syncFromFirebase(function(){
       initHdr();initNav();rDia();
     });
   } else {
     currentUser=null;
-    // Show login, hide app
-    document.getElementById('loginScreen').style.display='flex';
-    document.getElementById('appContent').style.display='none';
+    if(loginEl){loginEl.style.cssText='display:flex!important;position:fixed;inset:0;background:linear-gradient(160deg,#1A1015 0%,#3D1A2E 60%,#5C1F45 100%);align-items:center;justify-content:center;z-index:9999;';}
+    if(appEl){appEl.style.cssText='display:none!important';}
   }
 });
 
