@@ -114,6 +114,8 @@ var CUBOS=[
   {id:'academico',l:'Academico',c:'#60A5FA',bg:'#EFF6FF',dk:'#1D4ED8'},
   {id:'emprendimiento',l:'Negocio',c:'#A78BFA',bg:'#F5F3FF',dk:'#6D28D9'},
   {id:'hogar',l:'Hogar',c:'#34D399',bg:'#ECFDF5',dk:'#065F46'},
+  {id:'familia',l:'Familia',c:'#F59E0B',bg:'#FFFBEB',dk:'#B45309'},
+  {id:'pareja',l:'Pareja',c:'#EC4899',bg:'#FDF2F8',dk:'#9D174D'},
   {id:'recuperacion',l:'Descanso',c:'#FBBF24',bg:'#FFFBEB',dk:'#92400E'}
 ];
 var DIAS_L=['Lunes','Martes','Miercoles','Jueves','Viernes'];
@@ -140,18 +142,20 @@ function fmtSemana(offset){
   return ini+' — '+fin;
 }
 var SUBCATS={
-  bebe:['Cuidado Directo','Alimentacion','Educ. Extracurricular','Salud','Logistica','Estimulacion y Desarrollo'],
-  personal:['Ejercicio Fisico','Arreglo Personal','Salud','Meditacion','Autoconocimiento','Recreacion / Ocio','Planificacion Personal'],
+  bebe:['Cuidado Directo','Alimentacion','Educ. Extracurricular','Salud','Logistica','Estimulacion y Desarrollo','Proyectos Bebe'],
+  personal:['Ejercicio Fisico','Arreglo Personal','Admin Salud','Citas Medicas','Meditacion','Autoconocimiento','Recreacion / Ocio','Planificacion Personal','Proyecto'],
   academico:['Formacion Profesional','Metafisica China','Desarrollo Personal','Formacion Parental'],
   emprendimiento:['Conformacion y Gestion','Postulacion a Contratos','Ejecucion de Contratos','Produccion de Contenidos'],
   hogar:['Alimentacion','Organizacion y Limpieza','Proyecto Renovacion','Compras'],
+  familia:['Compromisos','Apoyo Gestion','Cuidado','Tiempo Libre'],
+  pareja:['Tiempo Compartido','Apoyo Tareas Admin'],
   recuperacion:['Sueno','Descanso Activo']
 };
 var SUBSUBCATS={
-  'Formacion Profesional':['Clases / Sesiones Sincronas','Estudio e Investigacion','Trabajos y Entregas','Admin Universitaria'],
-  'Metafisica China':['Clases / Sesiones Sincronas','Estudio e Investigacion','Aplicacion y Practica','Entregas'],
-  'Desarrollo Personal':['Clases / Sesiones Sincronas','Estudio e Investigacion','Practica Activa','Entregas'],
-  'Formacion Parental':['Talleres','Lectura e Investigacion']
+  'Formacion Profesional':['Clases','Estudio e Investigacion','Trabajos y Entregas','Tareas Administrativas'],
+  'Metafisica China':['Clases','Estudio e Investigacion','Aplicacion y Practica','Tareas Administrativas'],
+  'Desarrollo Personal':['Clases','Estudio e Investigacion','Practica Activa','Tareas Administrativas'],
+  'Formacion Parental':['Talleres','Lectura e Investigacion','Tareas Administrativas']
 };
 function subsubcatOpts(subcatVal,sel){
   var subs=SUBSUBCATS[subcatVal]||[];
@@ -1359,12 +1363,14 @@ function rNota(){
   h+='<div style="font-size:12px;line-height:1.8"><strong>Nivel 1  -  Cubos:</strong> dominios de vida. Estables.<br><strong>Nivel 2  -  Subcategorias:</strong> tipos de actividad. Unidad de auditoria real.<br><strong>Nivel 3  -  Actividades:</strong> ejemplos concretos orientativos.</div></div>';
   // Cubos y subcats
   var SUBCATS_LABEL={
-    bebe:{emoji:'🍼',subs:['Cuidado Directo','Alimentacion','Educ. Extracurricular','Salud','Logistica','Estimulacion y Desarrollo']},
-    personal:{emoji:'🙋',subs:['Ejercicio Fisico','Arreglo Personal','Salud','Meditacion','Autoconocimiento','Recreacion / Ocio','Planificacion Personal']},
-    academico:{emoji:'🎓',subs:['Formacion Profesional > Clases/Estudio/Trabajos','Metafisica China > Clases/Estudio/Practica','Desarrollo Personal > Clases/Estudio/Practica','Formacion Parental > Talleres/Lectura']},
+    bebe:{emoji:'🍼',subs:['Cuidado Directo','Alimentacion','Educ. Extracurricular','Salud','Logistica','Estimulacion y Desarrollo','Proyectos Bebe']},
+    personal:{emoji:'🙋',subs:['Ejercicio Fisico','Arreglo Personal','Admin Salud','Citas Medicas','Meditacion','Autoconocimiento','Recreacion / Ocio','Planificacion Personal','Proyecto']},
+    academico:{emoji:'🎓',subs:['Formacion Profesional > Clases/Estudio/Trabajos/Admin','Metafisica China > Clases/Estudio/Practica/Admin','Desarrollo Personal > Clases/Estudio/Practica/Admin','Formacion Parental > Talleres/Lectura/Admin']},
     emprendimiento:{emoji:'🚀',subs:['Conformacion y Gestion','Postulacion a Contratos','Ejecucion de Contratos','Produccion de Contenidos']},
     hogar:{emoji:'🏠',subs:['Alimentacion','Organizacion y Limpieza','Proyecto Renovacion','Compras']},
-    recuperacion:{emoji:'🔋',subs:['Sueno','Descanso Activo']}
+    recuperacion:{emoji:'🔋',subs:['Sueno','Descanso Activo']},
+    familia:{emoji:'👨‍👩‍👧',subs:['Compromisos','Apoyo Gestion','Cuidado','Tiempo Libre']},
+    pareja:{emoji:'💑',subs:['Tiempo Compartido','Apoyo Tareas Admin']}
   };
   CUBOS.forEach(function(cub){
     var info=SUBCATS_LABEL[cub.id];if(!info)return;
