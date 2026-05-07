@@ -1220,6 +1220,37 @@ function sendV(preMsg){
   });
 }
 
+function exportarDirecto(){
+  var json=JSON.stringify(S,null,2);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(json).then(function(){
+      alert('JSON copiado. Pegalo en el chat de Valeria.');
+    }).catch(function(){fallbackCopy(json);});
+  } else {fallbackCopy(json);}
+}
+function fallbackCopy(text){
+  var ta=document.createElement('textarea');
+  ta.value=text;ta.style.cssText='position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy');alert('JSON copiado. Pegalo en el chat de Valeria.');}
+  catch(e){alert('No se pudo copiar. Usa Respaldo > Exportar.');}
+  document.body.removeChild(ta);
+}
+function importarDirecto(){
+  var txt=prompt('Pega aqui el JSON que te devolvio Valeria:');
+  if(!txt||!txt.trim())return;
+  try{
+    var d=JSON.parse(txt.trim());
+    if(!d.actividades)throw new Error('invalido');
+    S=d;
+    try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e){}
+    if(currentUser){
+      db.collection('usuarios').doc(USER_DOC).set(S).then(function(){
+        alert('Datos importados y sincronizados.');location.reload();
+      }).catch(function(e){alert('Error Firebase: '+e.message);location.reload();});
+    } else {alert('Datos importados.');location.reload();}
+  }catch(e){alert('JSON invalido. Verifica que copiaste el texto completo.');}
+}  
 // ============================================================
 // RESPALDO
 // ============================================================
