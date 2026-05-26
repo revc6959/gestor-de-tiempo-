@@ -644,6 +644,7 @@ function renderActItem(a,enDia){
   if(a.recurrente)h+='<div style="font-size:9px;color:#9B4468;margin-top:1px">Recurrente</div>';
   h+=bdg(cub.bg,cub.dk,cub.l)+(a.subcat?(' '+bdg(cub.bg,cub.c,a.subcat)):'')+(a.subsubcat?(' '+bdg(cub.bg,cub.c,a.subsubcat)):'');
   h+='</div>';
+  h+='<button onclick="editarAct('+a.id+')" class="btnx" style="color:#9B4468;font-size:13px" title="Editar">✎</button>';
   h+='<button onclick="dA('+a.id+')" class="btnx">×</button>';
   h+='</div></div>';
   return h;
@@ -660,6 +661,61 @@ function dsmH(id){
 function dA(id){
   S.actividades=S.actividades.filter(function(a){return a.id!==id;});
   save();rDia();rSem();
+}
+function updSubcatEd(){updSubcat('eaCubo','eaSubcat');document.getElementById('eaSubsubcatCont').innerHTML='';document.getElementById('eaSubsubcatCont').style.display='none';}
+function updSubcatEdSub(){updSubsubcat('eaSubcat','eaSubsubcatCont');}
+function editarAct(id){
+  var a=S.actividades.find(function(x){return x.id===id;});
+  if(!a)return;
+  var modal=document.getElementById('modalAct');
+  var subcatOptsE=subcatOpts(a.cubo,a.subcat);
+  var subsubcatOptsE=subsubcatOpts(a.subcat,a.subsubcat);
+  var h='<div class="modal-box">';
+  h+='<div class="sec" style="margin-bottom:11px">Editar actividad</div>';
+  h+='<input class="inp" id="eaTit" value="'+a.titulo.replace(/"/g,"&quot;")+'"/>';
+  h+='<select class="sel" id="eaCubo" onchange="updSubcatEd()">'+cuboOpts(a.cubo)+'</select>';
+  h+='<select class="sel" id="eaSubcat" onchange="updSubcatEdSub()">'+subcatOptsE+'</select>';
+  if(subsubcatOptsE){h+='<div id="eaSubsubcatCont" style="display:block"><select class="sel" id="eaSubsubcatCont_sel">'+subsubcatOptsE+'</select></div>';}
+  else{h+='<div id="eaSubsubcatCont" style="display:none"></div>';}
+  h+='<select class="sel" id="eaPrio">';
+  h+='<option value="alta"'+(a.prioridad==='alta'?' selected':'')+'>Alta prioridad</option>';
+  h+='<option value="media"'+(a.prioridad==='media'?' selected':'')+'>Media prioridad</option>';
+  h+='<option value="baja"'+(a.prioridad==='baja'?' selected':'')+'>Baja prioridad</option>';
+  h+='</select>';
+  h+='<div class="lbl">Fecha:</div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:8px">';
+  h+='<input id="eaFecha" class="inp" style="margin-bottom:0;flex:1;font-size:12px" value="'+(a.fecha||'')+'" readonly/>';
+  h+='<button onclick="showCal(&quot;eaFecha&quot;,null)" style="padding:8px 11px;background:#FDF2F8;border:1.5px solid #D4869E;border-radius:8px;font-size:12px;cursor:pointer">Cal</button>';
+  h+='</div>';
+  h+='<div class="g2" style="margin-bottom:8px">';
+  h+='<div><div class="lbl">Hora inicio</div><select id="eaHi" style="width:100%;padding:7px;border-radius:8px;border:1.5px solid #E8D5DF;font-size:12px">'+hOpts(a.hi||'')+'</select></div>';
+  h+='<div><div class="lbl">Hora fin</div><select id="eaHf" style="width:100%;padding:7px;border-radius:8px;border:1.5px solid #E8D5DF;font-size:12px">'+hOpts(a.hf||'')+'</select></div>';
+  h+='</div>';
+  h+='<div style="display:flex;gap:7px;margin-top:4px">';
+  h+='<button class="btn" onclick="guardarEdicion('+id+')">Guardar</button>';
+  h+='<button class="btns" onclick="closeModalAct()">Cancelar</button>';
+  h+='</div></div>';
+  modal.style.display='flex';
+  modal.innerHTML=h;
+}
+function guardarEdicion(id){
+  var tit=document.getElementById('eaTit').value.trim();
+  if(!tit){alert('Escribe el nombre de la actividad');return;}
+  var cubo=document.getElementById('eaCubo').value;
+  var subcat=document.getElementById('eaSubcat')?document.getElementById('eaSubcat').value:'';
+  var subsubcatEl=document.getElementById('eaSubsubcatCont_sel');
+  var subsubcat=subsubcatEl?subsubcatEl.value:'';
+  var prio=document.getElementById('eaPrio').value;
+  var fecha=document.getElementById('eaFecha').value;
+  var hi=document.getElementById('eaHi').value;
+  var hf=document.getElementById('eaHf').value;
+  var dn=fecha?new Date(fecha+'T12:00:00').getDay():new Date().getDay();
+  var dk2=dowToDk(dn);
+  S.actividades=S.actividades.map(function(a){
+    if(a.id!==id)return a;
+    return Object.assign({},a,{titulo:tit,cubo:cubo,subcat:subcat,subsubcat:subsubcat,prioridad:prio,fecha:fecha,dia:dk2,hi:hi,hf:hf});
+  });
+  save();closeModalAct();rDia();rSem();
 }
 
 // ============================================================
@@ -1243,13 +1299,31 @@ function importarDirecto(){
   try{
     var d=JSON.parse(txt.trim());
     if(!d.actividades)throw new Error('invalido');
-    S=d;
+    var idsExist={};
+    S.actividades.forEach(function(a){idsExist[a.id]=true;});
+    var nuevasActs=d.actividades.filter(function(a){return !idsExist[a.id];});
+    S.actividades=S.actividades.concat(nuevasActs);
+    if(d.pendientes&&d.pendientes.length){
+      var idsPend={};
+      S.pendientes.forEach(function(p){idsPend[p.id]=true;});
+      d.pendientes.forEach(function(p){if(!idsPend[p.id])S.pendientes.push(p);});
+    }
+    if(d.metas&&d.metas.length){
+      var idsMeta={};
+      S.metas.forEach(function(m){idsMeta[m.id]=true;});
+      d.metas.forEach(function(m){if(!idsMeta[m.id])S.metas.push(m);});
+    }
+    if(d.inventario&&d.inventario.length){
+      var idsInv={};
+      S.inventario.forEach(function(x){idsInv[x.id]=true;});
+      d.inventario.forEach(function(x){if(!idsInv[x.id])S.inventario.push(x);});
+    }
     try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e){}
     if(currentUser){
       db.collection('usuarios').doc(USER_DOC).set(S).then(function(){
-        alert('Datos importados y sincronizados.');location.reload();
+        alert('Importado y fusionado.');location.reload();
       }).catch(function(e){alert('Error Firebase: '+e.message);location.reload();});
-    } else {alert('Datos importados.');location.reload();}
+    } else {alert('Importado y fusionado.');}
   }catch(e){alert('JSON invalido. Verifica que copiaste el texto completo.');}
 }  
 // ============================================================
@@ -1301,20 +1375,36 @@ function importar(){
       try{
         var d=JSON.parse(ev.target.result);
         if(!d.actividades)throw new Error('Invalido');
-        S=d;
-        // Save to localStorage first
+        var idsExist={};
+        S.actividades.forEach(function(a){idsExist[a.id]=true;});
+        var nuevasActs=d.actividades.filter(function(a){return !idsExist[a.id];});
+        S.actividades=S.actividades.concat(nuevasActs);
+        if(d.pendientes&&d.pendientes.length){
+          var idsPend={};
+          S.pendientes.forEach(function(p){idsPend[p.id]=true;});
+          d.pendientes.forEach(function(p){if(!idsPend[p.id])S.pendientes.push(p);});
+        }
+        if(d.metas&&d.metas.length){
+          var idsMeta={};
+          S.metas.forEach(function(m){idsMeta[m.id]=true;});
+          d.metas.forEach(function(m){if(!idsMeta[m.id])S.metas.push(m);});
+        }
+        if(d.inventario&&d.inventario.length){
+          var idsInv={};
+          S.inventario.forEach(function(x){idsInv[x.id]=true;});
+          d.inventario.forEach(function(x){if(!idsInv[x.id])S.inventario.push(x);});
+        }
         try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e2){}
-        // Save to Firebase and wait
         if(currentUser){
           db.collection('usuarios').doc(USER_DOC).set(S).then(function(){
-            alert('Datos importados y sincronizados con Firebase.');
+            alert('Importado y fusionado. Pendientes y metas anteriores conservados.');
             location.reload();
           }).catch(function(e3){
-            alert('Importado localmente. Error Firebase: '+e3.message);
+            alert('Fusionado localmente. Error Firebase: '+e3.message);
             location.reload();
           });
         } else {
-          alert('Datos importados localmente.');
+          alert('Importado y fusionado localmente.');
           location.reload();
         }
       }catch(err){alert('Archivo invalido.');}
