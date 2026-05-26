@@ -1277,27 +1277,63 @@ function sendV(preMsg){
   });
 }
 
+function cerrarModalRen(){document.getElementById('modalRen').style.display='none';}
 function exportarDirecto(){
   var json=JSON.stringify(S,null,2);
+  var modal=document.getElementById('modalRen');
+  var h='<div class="modal-box">';
+  h+='<div class="sec" style="margin-bottom:8px">Exportar para Valeria</div>';
+  h+='<p style="font-size:12px;color:#666;margin-bottom:10px">Copia todo el texto y pegalo en el chat con Claude/Valeria.</p>';
+  h+='<textarea id="exportTA" style="width:100%;height:180px;font-size:10px;font-family:monospace;border:1.5px solid #E8D5DF;border-radius:8px;padding:8px;resize:none" readonly>'+json+'</textarea>';
+  h+='<button onclick="copiarExport()" class="btn" style="margin-top:8px;margin-bottom:8px">Copiar al portapapeles</button>';
+  h+='<div id="exportMsg" style="font-size:11px;color:#22C55E;text-align:center;display:none">Copiado!</div>';
+  h+='<button onclick="cerrarModalRen()" style="width:100%;padding:10px;background:#F5EEF1;border:none;border-radius:9px;font-size:12px;color:#888;cursor:pointer;font-family:inherit;margin-top:4px">Cerrar</button>';
+  h+='</div>';
+  modal.innerHTML=h;
+  modal.style.display='flex';
+  setTimeout(function(){var ta=document.getElementById('exportTA');if(ta)ta.select();},200);
+}
+function copiarExport(){
+  var ta=document.getElementById('exportTA');
+  if(!ta)return;
+  ta.select();
+  var msg=document.getElementById('exportMsg');
   if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(json).then(function(){
-      alert('JSON copiado. Pegalo en el chat de Valeria.');
-    }).catch(function(){fallbackCopy(json);});
-  } else {fallbackCopy(json);}
+    navigator.clipboard.writeText(ta.value).then(function(){
+      if(msg){msg.style.display='block';setTimeout(function(){msg.style.display='none';},2000);}
+    }).catch(function(){
+      try{document.execCommand('copy');if(msg){msg.style.display='block';setTimeout(function(){msg.style.display='none';},2000);}}catch(e){}
+    });
+  } else {
+    try{document.execCommand('copy');if(msg){msg.style.display='block';setTimeout(function(){msg.style.display='none';},2000);}}catch(e){}
+  }
 }
 function fallbackCopy(text){
   var ta=document.createElement('textarea');
   ta.value=text;ta.style.cssText='position:fixed;top:0;left:0;opacity:0';
   document.body.appendChild(ta);ta.focus();ta.select();
-  try{document.execCommand('copy');alert('JSON copiado. Pegalo en el chat de Valeria.');}
-  catch(e){alert('No se pudo copiar. Usa Respaldo > Exportar.');}
+  try{document.execCommand('copy');}catch(e){}
   document.body.removeChild(ta);
 }
 function importarDirecto(){
-  var txt=prompt('Pega aqui el JSON que te devolvio Valeria:');
-  if(!txt||!txt.trim())return;
+  var modal=document.getElementById('modalRen');
+  var h='<div class="modal-box">';
+  h+='<div class="sec" style="margin-bottom:8px">Importar de Valeria</div>';
+  h+='<p style="font-size:12px;color:#666;margin-bottom:10px">Pega aqui el JSON que te devolvio Valeria. Tus datos actuales se conservaran.</p>';
+  h+='<textarea id="importTA" style="width:100%;height:180px;font-size:10px;font-family:monospace;border:1.5px solid #E8D5DF;border-radius:8px;padding:8px;resize:none" placeholder="Pega el JSON aqui..."></textarea>';
+  h+='<div id="importMsg" style="font-size:11px;color:#EF4444;text-align:center;display:none;margin-top:6px">JSON invalido. Verifica el contenido.</div>';
+  h+='<button onclick="procesarImportDirecto()" class="btn" style="margin-top:8px;margin-bottom:8px">Importar</button>';
+  h+='<button onclick="cerrarModalRen()" style="width:100%;padding:10px;background:#F5EEF1;border:none;border-radius:9px;font-size:12px;color:#888;cursor:pointer;font-family:inherit;margin-top:4px">Cancelar</button>';
+  h+='</div>';
+  modal.innerHTML=h;
+  modal.style.display='flex';
+}
+function procesarImportDirecto(){
+  var ta=document.getElementById('importTA');
+  var msg=document.getElementById('importMsg');
+  if(!ta||!ta.value.trim()){if(msg){msg.textContent='Pega el JSON primero.';msg.style.display='block';}return;}
   try{
-    var d=JSON.parse(txt.trim());
+    var d=JSON.parse(ta.value.trim());
     if(!d.actividades)throw new Error('invalido');
     var idsExist={};
     S.actividades.forEach(function(a){idsExist[a.id]=true;});
@@ -1319,12 +1355,15 @@ function importarDirecto(){
       d.inventario.forEach(function(x){if(!idsInv[x.id])S.inventario.push(x);});
     }
     try{localStorage.setItem('cubos_v7',JSON.stringify(S));}catch(e){}
+    document.getElementById('modalRen').style.display='none';
     if(currentUser){
       db.collection('usuarios').doc(USER_DOC).set(S).then(function(){
-        alert('Importado y fusionado.');location.reload();
-      }).catch(function(e){alert('Error Firebase: '+e.message);location.reload();});
-    } else {alert('Importado y fusionado.');}
-  }catch(e){alert('JSON invalido. Verifica que copiaste el texto completo.');}
+        location.reload();
+      }).catch(function(e){location.reload();});
+    } else {location.reload();}
+  }catch(e){
+    if(msg){msg.textContent='JSON invalido. Verifica el contenido.';msg.style.display='block';}
+  }
 }  
 // ============================================================
 // RESPALDO
